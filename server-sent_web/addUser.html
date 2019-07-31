@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Server-Sent events服务器发送事件</title>
+    <style>
+        .div_1{padding:100px 0 0 300px;}
+		.div_1 p{line-height:30px;}
+    </style>
+</head>
+
+<body>
+    <div class="div_1">
+        <p>姓名：<input type="text" class="inp_xz" autocomplete="off"></p>
+        <p>QQ：<input type="text" class="inp_xz" autocomplete="off"></p>
+        <p>电话：<input type="text" class="inp_xz" autocomplete="off"></p>
+        <p><button class="btn_xz" type="button">新增</button>
+        <button class="cle" type="reset" type="button">取消</button></p>
+    </div>
+
+</body>
+
+	<script src="./jquery-1.7.2.min.js"></script>
+
+	<script>
+		$(function(){
+			
+			//新增操作    http://127.0.0.1:8000/user/add
+			$(".btn_xz").click(function(){
+				 var name =$(".div_1 input.inp_xz").eq(0).val();
+				 var QQ = $(".div_1 input.inp_xz").eq(1).val();
+				 var TEL = $(".div_1 input.inp_xz").eq(2).val();
+				 if(name!=null && name!="" &&QQ!=null && QQ!="" &&TEL!=null && TEL!=""){
+					 $.ajax({
+					 	url:"http://127.0.0.1:8000/user/add",
+					 	type:"post",
+					 	data:{
+							name:name,
+							QQ:QQ,
+							TEL:TEL
+						},
+					 	dataType:'json',
+					 	success:function (e) {
+					 		console.log(e);
+							if(e=="1"){
+								alert("添加成功！");
+								//清空表单
+								$(".div_1 .inp_xz").val('');
+							}
+					 	},
+					 	complete:function () {
+					 		
+					 	}
+					 })
+				 }else{
+					 alert("姓名QQ电话不能为空！");
+				 }
+			})
+			
+			
+		})			
+	</script>
+
+</html>

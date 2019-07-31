@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Server-Sent events服务器发送事件</title>
+    <style>
+        #stu_list{float:left;margin:15px;}
+        #stu_list td.u_name{color:blue;cursor:pointer;}
+        #userView ul li{list-style:none;line-height:34px;}
+        .div_1,#serbox {
+            display: none;clear:both;
+        }
+		.div{clear:both;}
+    </style>
+</head>
+
+<body>
+    <div>
+    	<button class="btn" type="button">新增</button>
+        <button class="btn" type="button">查找</button>
+    </div>
+    <table border="" cellspacing="1" cellpadding="0" id="stu_list">
+        <thead>
+			<th>姓名</th>
+            <th>QQ</th>
+            <th>电话</th>
+            <th colspan="2">操作</th>
+		</thead>
+		<tbody>
+			
+		</tbody>
+    </table>
+	<!-- 查看单个用户信息 -->
+	<div id="userView">
+		<ul></ul>
+	</div>
+	<div class="div_1">
+		<input type="hidden" name="userId" id="userId" />
+	    姓名：<span class="name_x"></span><br>
+	    QQ：<input type="text" class="inp_x" autocomplete="off"><br>
+	    电话：<input type="text" class="inp_x" autocomplete="off"><br>
+	    <button class="btn_x" type="button">修改</button>
+	    <button class="cle" type="reset" type="button">取消</button>
+	</div>
+    <div class="div">
+        <div id="serbox">姓名：<input type="text" class="inp_c" autocomplete="off"> <br>
+			<button class="btn_c" type="button">查找</button>
+			<button class="cle" type="reset" type="button">取消</button>
+		</div>
+    </div>
+    <!-- 新消息通知音频-->
+	<div id="newSesbox">
+		<audio src="newses.mp3"></audio>
+	</div>
+</body>
+
+	<script src="./jquery-1.7.2.min.js"></script>
+
+	<script>
+		$(function(){
+			//默认展示用户列表方法
+				showUserList();
+				function showUserList(){
+					$.ajax({
+							url: "http://127.0.0.1:8000/user/list", // url---->地址
+							type: "get", // type ---> 请求方式
+							async: true, // async----> 同步：false，异步：true 
+							data: { //传入信息
+							},
+							dataType:'json',
+							success: function (e){
+								$("#stu_list tbody").empty();
+								$(e).each(function(i,v){
+									$("#stu_list tbody").append(`<tr data-userid='${v.user_id}'>
+										<td class="u_name">${v.name}</td>
+										<td>${v.QQ}</td>
+										<td>${v.TEL}</td>
+										<td><button type="button" class="updbtn">修改</button> 
+											<button type="button" class="delbtn">删除</button>
+										</td>
+									</tr>`);
+								})
+							}
+					})
+				}
+				
+				//点击姓名查看单个用户信息特效userView
+				$("#stu_list").on("click","td.u_name",function(){
+					 $.ajax({
+							url: "http://127.0.0.1:8000/user/view", // url---->地址
+							type: "post", // type ---> 请求方式
+							async: true, // async----> 同步：false，异步：true 
+							data: { //传入信息
+								userId: $(this).parent().attr("data-userid")
+							},
+							dataType:'json',
+							success: function (e){
+								$("#userView ul").empty();
+								$.each(e[0], function(k,v){   
+									$("#userView ul").append('<li>'+ k +'：'+ v +'</li>');
+								})
+							}
+					 })
+				})
+				
+				//删除操作
+				$("#stu_list").on("click","button.delbtn",function(){
+					var self = $(this);
+					 $.ajax({
+							url: "http://127.0.0.1:8000/user/delete", // url---->地址
+							type: "post", // type ---> 请求方式
+							async: true, // async----> 同步：false，异步：true 
+							data: { //传入信息
+								userId: $(this).parent().parent().attr("data-userid")
+							},
+							dataType:'json',
+							success: function (e){
+								self.parent().parent().remove();
+								alert("删除成功！");
+							}
+					 })
+				})
+			
+			//点击修改按钮特效
+			$("#stu_list").on("click","button.updbtn", function(){
+				$(".div_1").show();
+				$(".div_1 #userId").val($(this).parent().parent().attr("data-userid"));
+				$(".name_x").eq(0).text($(this).parent().siblings().eq(0).text());
+				$(".inp_x").eq(0).val($(this).parent().siblings().eq(1).text());
+				$(".inp_x").eq(1).val($(this).parent().siblings().eq(2).text());
+			})
+			
+			// 修改操作
+			$(".btn_x").on("click", function () {	
+				$.ajax({
+					url: "http://127.0.0.1:8000/user/update", // url---->地址
+					type: "post",  // type ---> 请求方式
+					async: true,  // async----> 同步：false，异步：true 
+					data: { //传入信息
+						userId:$(".div_1 #userId").val(),
+						QQ: $(".inp_x").eq(0).val(),
+						TEL: $(".inp_x").eq(1).val()
+					},
+					dataType:'json',
+					success: function (data) {
+						console.log(data);
+						$(".div_1").hide();
+						//默认展示用户列表方法
+						showUserList();
+					}
+				})
+			})
+					
+			//点击新增按钮特效跳转页面
+			$(".btn").eq(0).click(function(){
+				window.open('addUser.html'); 
+			})
+						
+			//执行服务器发送事件自动推送新增的数据
+			if(typeof(EventSource)!=="undefined"){  //检测浏览器是否支持EventSource对象
+				var source=new EventSource("http://127.0.0.1:8000/user/sendNewUser");
+				source.onmessage = function(e){
+					console.log(e.data);
+					console.log("你好！你有新消息");
+					if(e.data!= 'null'){   //判断后端推送的数据是否为空，不为空才展示出来
+						var obj = JSON.parse(e.data);
+						$("#stu_list tbody").prepend(`<tr data-userid='${obj.user_id}'>
+						<td class="u_name">${obj.name}</td>
+						<td>${obj.QQ}</td>
+						<td>${obj.TEL}</td>
+						<td><button type="button" class="updbtn">修改</button> 
+							<button type="button" class="delbtn">删除</button>
+						</td>
+					  </tr>`);
+					   //播放新消息通知音频
+					   $("#newSesbox audio")[0].play();
+					}
+				}
+			}
+			
+			//点击查找按钮特效
+			$(".btn").eq(1).click(function(){
+				$("#serbox").show();
+				$("#serResu").remove();
+			})
+			
+			// 查询
+			$(".btn_c").on("click", function () {
+				var name = $(".inp_c").val();
+				console.log(name);
+				if(name.length > 0 &&name!=''&& name!=null){
+					$.ajax({
+						url: "http://127.0.0.1:8000/user/serach", // url---->地址
+						type: "post",  // type ---> 请求方式
+						async: true,  // async----> 同步：false，异步：true 
+						data: { //传入信息
+							name: $(".inp_c").val()
+						},
+						dataType:'json',
+						success: function (data) {
+							console.log(typeof data);
+							if(data!=null &&data!='' && data.length!=0){
+								$(".div").eq(0).append('<div id="serResu"><h3>查询结果为:</h3><p>' + data[0].name + '\t' + data[0].QQ + '\t' + data[0].TEL + '</p></div>');
+								$("#serbox").hide();
+							}else{
+								$(".div").eq(0).append('<div id="serResu"><h3>查无结果</h3></div>');
+								$("#serbox").hide();
+							}
+						}
+					})
+				}else{
+					alert("查找姓名不能为空！");
+				} 
+			})
+			
+				
+		})
+			
+	</script>
+
+</html>
